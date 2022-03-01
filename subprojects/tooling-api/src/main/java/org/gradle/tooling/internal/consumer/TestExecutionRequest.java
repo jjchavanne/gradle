@@ -37,13 +37,15 @@ public class TestExecutionRequest implements InternalTestExecutionRequest {
     private final Collection<InternalJvmTestRequest> internalJvmTestRequests;
     private final InternalDebugOptions debugOptions;
     private final Map<String, List<InternalJvmTestRequest>> taskAndTests;
+    private final Set<String> tasks;
 
-    public TestExecutionRequest(Iterable<TestOperationDescriptor> operationDescriptors, Collection<String> testClassNames, Set<InternalJvmTestRequest> internalJvmTestRequests, InternalDebugOptions debugOptions, Map<String, List<InternalJvmTestRequest>> testTasks) {
+    public TestExecutionRequest(Iterable<TestOperationDescriptor> operationDescriptors, Collection<String> testClassNames, Set<InternalJvmTestRequest> internalJvmTestRequests, InternalDebugOptions debugOptions, Map<String, List<InternalJvmTestRequest>> testTasks, Set<String> tasks) {
         this.testDescriptors = adaptDescriptors(operationDescriptors);
         this.testClassNames = testClassNames;
         this.internalJvmTestRequests = internalJvmTestRequests;
         this.debugOptions = debugOptions;
         this.taskAndTests = testTasks;
+        this.tasks = tasks;
     }
 
     public InternalDebugOptions getDebugOptions() {
@@ -75,5 +77,10 @@ public class TestExecutionRequest implements InternalTestExecutionRequest {
                 return (InternalTestDescriptor) ((OperationDescriptorWrapper) operationDescriptor).getInternalOperationDescriptor();
             }
         });
+    }
+
+    @Override
+    public Set<String> getTasks() {
+        return tasks;
     }
 }

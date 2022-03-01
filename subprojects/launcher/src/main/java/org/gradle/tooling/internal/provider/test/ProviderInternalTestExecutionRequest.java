@@ -23,6 +23,7 @@ import org.gradle.tooling.internal.protocol.test.InternalJvmTestRequest;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @since 2.7-rc-1
@@ -41,4 +42,6 @@ public interface ProviderInternalTestExecutionRequest {
      * @since 6.1
      */
     Map<String, List<InternalJvmTestRequest>> getTaskAndTests(Map<String, List<InternalJvmTestRequest>> defaults);
+
+    Set<String> getTasks(Set<String> defaults);
 }

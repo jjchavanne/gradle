@@ -81,7 +81,7 @@ public class EstablishBuildEnvironment extends BuildCommandOnly {
         Locale locale = Locale.getDefault();
 
         try {
-            execution.proceed();
+        execution.proceed();
         } finally {
             System.setProperties(originalSystemProperties);
             processEnvironment.maybeSetEnvironment(originalEnv);

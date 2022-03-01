@@ -35,6 +35,7 @@ import org.gradle.util.internal.CollectionUtils;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,7 @@ public class DefaultTestLauncher extends AbstractLongRunningOperation<DefaultTes
     private final Set<InternalJvmTestRequest> internalJvmTestRequests = new LinkedHashSet<InternalJvmTestRequest>();
     private final DefaultDebugOptions debugOptions = new DefaultDebugOptions();
     private final Map<String, List<InternalJvmTestRequest>> tasksAndTests = new HashMap<String, List<InternalJvmTestRequest>>();
+    private final Set<String> tasks = new HashSet<String>();
 
     public DefaultTestLauncher(AsyncConsumerActionExecutor connection, ConnectionParameters parameters) {
         super(parameters);
@@ -153,6 +155,13 @@ public class DefaultTestLauncher extends AbstractLongRunningOperation<DefaultTes
     }
 
     @Override
+    public TestLauncher forTasks(String... tasks) {
+        operationParamsBuilder.setTasks(Arrays.asList(tasks));
+        this.tasks.addAll(Arrays.asList(tasks));
+        return this;
+    }
+
+    @Override
     public void run() {
         BlockingResultHandler<Void> handler = new BlockingResultHandler<Void>(Void.class);
         run(handler);
@@ -170,7 +179,7 @@ public class DefaultTestLauncher extends AbstractLongRunningOperation<DefaultTes
             }
         }
         final ConsumerOperationParameters operationParameters = getConsumerOperationParameters();
-        final TestExecutionRequest testExecutionRequest = new TestExecutionRequest(operationDescriptors, ImmutableList.copyOf(testClassNames), ImmutableSet.copyOf(internalJvmTestRequests), debugOptions, ImmutableMap.copyOf(tasksAndTests));
+        final TestExecutionRequest testExecutionRequest = new TestExecutionRequest(operationDescriptors, ImmutableList.copyOf(testClassNames), ImmutableSet.copyOf(internalJvmTestRequests), debugOptions, ImmutableMap.copyOf(tasksAndTests), tasks);
         connection.run(new ConsumerAction<Void>() {
             @Override
             public ConsumerOperationParameters getParameters() {

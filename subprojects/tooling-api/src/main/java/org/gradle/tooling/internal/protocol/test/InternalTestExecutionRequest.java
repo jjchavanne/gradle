@@ -20,6 +20,7 @@ import org.gradle.tooling.internal.protocol.InternalProtocolInterface;
 import org.gradle.tooling.internal.protocol.events.InternalTestDescriptor;
 
 import java.util.Collection;
+import java.util.Set;
 
 /**
  * DO NOT CHANGE THIS INTERFACE. It is part of the cross-version protocol.
@@ -31,4 +32,6 @@ import java.util.Collection;
 public interface InternalTestExecutionRequest extends InternalProtocolInterface {
     Collection<InternalTestDescriptor> getTestExecutionDescriptors();
     Collection<String> getTestClassNames();
+
+    Set<String> getTasks();
 }
