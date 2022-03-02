@@ -61,49 +61,6 @@ tasks.validatePlugins {
     enableStricterValidation.set(true)
 }
 
-
-val isCiServer = "CI" in System.getenv()
-
-if (isCiServer && project.name != "gradle-kotlin-dsl-accessors") {
-    gradle.buildFinished {
-        failedTasks().forEach { prepareReportForCIPublishing(it.reports["html"].outputLocation.get().asFile) }
-    }
-}
-
-fun failedTasks() = gradle.taskGraph.allTasks.filter {
-    it.project == project && it is Reporting<*> && it.state.failure != null
-}.map { it as Reporting<*> }
-
-fun zip(destZip: File, srcDir: File) {
-    destZip.parentFile.mkdirs()
-    ZipOutputStream(FileOutputStream(destZip), StandardCharsets.UTF_8).use { zipOutput ->
-        val srcPath = srcDir.toPath()
-        Files.walk(srcPath).use { paths ->
-            paths
-                .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
-                .forEach { path ->
-                    val zipEntry = ZipEntry(srcPath.relativize(path).toString())
-                    zipOutput.putNextEntry(zipEntry)
-                    Files.copy(path, zipOutput)
-                    zipOutput.closeEntry()
-                }
-        }
-    }
-}
-
-fun prepareReportForCIPublishing(report: File) {
-    if (report.isDirectory) {
-        val destFile = layout.buildDirectory.file("report-${project.name}-${report.name}.zip").get().asFile
-        zip(destFile, report)
-    } else {
-        copy {
-            from(report)
-            into(layout.buildDirectory)
-            rename { "report-${project.name}-${report.parentFile.name}-${report.name}" }
-        }
-    }
-}
-
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }

@@ -33,13 +33,8 @@ import org.gradle.tooling.events.task.TaskFailureResult
 import org.gradle.tooling.events.task.TaskFinishEvent
 import org.gradle.tooling.events.task.TaskSuccessResult
 import java.io.File
-import java.io.FileOutputStream
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.nio.file.LinkOption
 import java.util.stream.Collectors
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -158,7 +153,7 @@ abstract class TestFilesCleanupService @Inject constructor(
 
     override fun close() {
         val projectPathToLeftoverFiles = mutableMapOf<String, LeftoverFiles>()
-        // First run: collect and archieve leftover files
+        // First run: collect and archive leftover files
         parameters.projectStates.get().forEach { (projectPath: String, projectExtension: TestFileCleanUpExtension) ->
             val tmpTestFiles = projectExtension.tmpTestFiles()
 
@@ -241,41 +236,7 @@ abstract class TestFilesCleanupService @Inject constructor(
         val testDistributionTraceJsons = executedTaskPaths.flatMap { taskPathToTDTraceJsons.getOrDefault(it, emptyList()) }
         val allReports = collectedTaskHtmlReports + attachedReports + executedTaskCustomReports + tmpTestFiles + testDistributionTraceJsons
         allReports.forEach { report ->
-            prepareReportForCiPublishing(report)
-        }
-    }
-
-    private
-    fun TestFilesCleanupProjectState.prepareReportForCiPublishing(report: File) {
-        if (report.exists()) {
-            if (report.isDirectory) {
-                val destFile = rootBuildDir.resolve("report-${projectName.get()}-${report.name}.zip")
-                zip(destFile, report)
-            } else {
-                fileSystemOperations.copy {
-                    from(report)
-                    into(rootBuildDir)
-                    rename { "report-${projectName.get()}-${report.parentFile.name}-${report.name}" }
-                }
-            }
-        }
-    }
-
-    private
-    fun zip(destZip: File, srcDir: File) {
-        destZip.parentFile.mkdirs()
-        ZipOutputStream(FileOutputStream(destZip), StandardCharsets.UTF_8).use { zipOutput ->
-            val srcPath = srcDir.toPath()
-            Files.walk(srcPath).use { paths ->
-                paths
-                    .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
-                    .forEach { path ->
-                        val zipEntry = ZipEntry(srcPath.relativize(path).toString())
-                        zipOutput.putNextEntry(zipEntry)
-                        Files.copy(path, zipOutput)
-                        zipOutput.closeEntry()
-                    }
-            }
+            prepareReportForCIPublishing(report, rootBuildDir, projectName.get(), fileSystemOperations)
         }
     }
 

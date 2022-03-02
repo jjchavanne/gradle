@@ -15,6 +15,7 @@
  */
 
 import gradlebuild.basics.BuildEnvironment
+import gradlebuild.ci.PrepareReportForCIPublishingPlugin
 import gradlebuild.testcleanup.TestFilesCleanupRootPlugin
 import gradlebuild.testcleanup.extension.TestFileCleanUpExtension
 import gradlebuild.testcleanup.extension.TestFilesCleanupBuildServiceRootExtension
@@ -34,6 +35,8 @@ val testFilesCleanup = extensions.create<TestFileCleanUpExtension>("testFilesCle
 }
 
 if (BuildEnvironment.isCiServer && project.name != "gradle-kotlin-dsl-accessors") {
+    rootProject.plugins.apply(PrepareReportForCIPublishingPlugin::class.java)
+
     rootProject.plugins.apply(TestFilesCleanupRootPlugin::class.java)
     val globalExtension = rootProject.extensions.getByType<TestFilesCleanupBuildServiceRootExtension>()
 
