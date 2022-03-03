@@ -314,14 +314,14 @@ public class ComponentState implements ComponentResolutionState, DependencyGraph
                 for (VariantResolveMetadata variant : configurationMetadata.getVariants()) {
                     List<? extends Capability> capabilities = variant.getCapabilities().getCapabilities();
                     if (capabilities.isEmpty()) {
-                        capabilities = Collections.singletonList(getImplicitCapability());
+                        capabilities = ImmutableList.of(getImplicitCapability());
                     } else {
                         capabilities = ImmutableList.copyOf(capabilities);
                     }
                     consumer.accept(new DefaultResolvedVariantResult(
                         metadata.getId(),
                         Describables.of(variant.getName()),
-                        attributeDesugaring.desugar(variant.getAttributes().asImmutable()),
+                        variant.getAttributes().asImmutable(),
                         capabilities,
                         null
                     ));
@@ -334,7 +334,7 @@ public class ComponentState implements ComponentResolutionState, DependencyGraph
                 consumer.accept(new DefaultResolvedVariantResult(
                     metadata.getId(),
                     Describables.of(variant.getName()),
-                    node.desugar(variant.getAttributes().asImmutable()),
+                    variant.getAttributes().asImmutable(),
                     ImmutableList.of(),
                     null
                 ));
