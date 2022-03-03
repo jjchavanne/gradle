@@ -724,7 +724,8 @@ class DefaultExecutionPlanTest extends AbstractExecutionPlanSpec {
         final Task a = task("a", failure: failure)
         final Task b = task("b", dependsOn: [a])
         final Task c = task("c")
-        addToGraphAndPopulate([b, c])
+        final Task d = task("d", dependsOn: [b, c])
+        addToGraphAndPopulate([d])
 
         when:
         executionPlan.setContinueOnFailure(true)
@@ -737,6 +738,32 @@ class DefaultExecutionPlanTest extends AbstractExecutionPlanSpec {
 
         then:
         failures == [failure]
+    }
+
+    def "does not attempt to execute tasks whose dependencies failed to execute in a previous plan"() {
+        def failures = []
+        RuntimeException failure = new RuntimeException()
+        final Task a = task("a", failure: failure)
+        final Task b = task("b", dependsOn: [a])
+        final Task c = task("c")
+        final Task d = task("d", dependsOn: [b, c])
+        addToGraphAndPopulate([b])
+        executedTasks == [a]
+
+        when:
+        executionPlan = newExecutionPlan()
+        addToGraphAndPopulate([d])
+        executionPlan.setContinueOnFailure(true)
+
+        then:
+        executionPlan.tasks as List == [b, c, d]
+        executedTasks == [c]
+
+        when:
+        executionPlan.collectFailures(failures)
+
+        then:
+        failures == []
     }
 
     def "does not build graph for or execute filtered tasks"() {
@@ -830,6 +857,23 @@ class DefaultExecutionPlanTest extends AbstractExecutionPlanSpec {
 
         then:
         executes(c)
+    }
+
+    def "does not build graph for or execute tasks that failed in a previous plan"() {
+        given:
+        Task a = task("a", failure: new RuntimeException("failure"))
+        Task b = task("b", dependsOn: [a])
+        Task c = task("c", dependsOn: [b])
+        addToGraphAndPopulate([b])
+        executedTasks == [a]
+
+        when:
+        executionPlan = newExecutionPlan()
+        addToGraphAndPopulate([c])
+
+        then:
+        executionPlan.tasks as List == [b, c]
+        executedTasks == []
     }
 
     def "required nodes added to the graph are executed in dependency order"() {
@@ -949,7 +993,7 @@ class DefaultExecutionPlanTest extends AbstractExecutionPlanSpec {
 
     List<Node> getExecutedNodes() {
         def nodes = []
-        while (executionPlan.hasNodesRemaining()) {
+        while (executionPlan.hasNodesYetToStart()) {
             def nextNode = executionPlan.selectNext()
             assert nextNode != null && !nextNode.isComplete()
             nodes << nextNode

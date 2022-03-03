@@ -121,12 +121,12 @@ public interface ExecutionPlan extends Describable, Closeable {
         }
 
         @Override
-        public boolean allNodesComplete() {
+        public boolean allExecutionComplete() {
             return true;
         }
 
         @Override
-        public boolean hasNodesRemaining() {
+        public boolean hasNodesYetToStart() {
             return false;
         }
 
@@ -197,9 +197,25 @@ public interface ExecutionPlan extends Describable, Closeable {
      */
     void collectFailures(Collection<? super Throwable> failures);
 
-    boolean allNodesComplete();
+    /**
+     * Has all execution completed?
+     *
+     * <p>When this method returns {@code true}, there is definitely no further work to start and no work in progress.</p>
+     *
+     * <p>When this method returns {@code false}, there may be further work yet to complete.</p>
+     */
+    boolean allExecutionComplete();
 
-    boolean hasNodesRemaining();
+    /**
+     * Are there nodes that are yet to start execution?
+     *
+     * <p>When this method returns {@code true}, there may be work ready to start and {@link #selectNext()} may return a non-null value (but may not, for example when another worker
+     * thread takes the work first). This means a worker thread should attempt to take some work from the plan and execute it.</p>
+     *
+     * <p>When this method returns {@code false} there is definitely no further work yet to start, and {@link #selectNext()} will always return null. This means a worker thread can stop
+     * taking work from this plan.</p>
+     */
+    boolean hasNodesYetToStart();
 
     /**
      * Returns the number of work items in the plan.

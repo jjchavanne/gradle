@@ -80,7 +80,7 @@ public class DefaultPlanExecutor implements PlanExecutor {
      */
     private void awaitCompletion(final ExecutionPlan executionPlan, final Collection<? super Throwable> failures) {
         coordinationService.withStateLock(resourceLockState -> {
-            if (executionPlan.allNodesComplete()) {
+            if (executionPlan.allExecutionComplete()) {
                 executionPlan.collectFailures(failures);
                 return FINISHED;
             } else {
@@ -186,7 +186,7 @@ public class DefaultPlanExecutor implements PlanExecutor {
                     executionPlan.cancelExecution();
                 }
 
-                if (!executionPlan.hasNodesRemaining()) {
+                if (!executionPlan.hasNodesYetToStart()) {
                     return FINISHED;
                 }
 

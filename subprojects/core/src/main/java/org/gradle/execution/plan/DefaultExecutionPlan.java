@@ -647,11 +647,8 @@ public class DefaultExecutionPlan implements ExecutionPlan {
         while (iterator.hasNext()) {
             Node node = iterator.next();
             if (node.isReady() && node.allDependenciesComplete()) {
-                if (!node.allDependenciesSuccessful()) {
-                    // Cannot execute this node - skip it
-                    node.skipExecution(this::recordNodeCompleted);
-                    continue;
-                }
+                // Nodes that should not run due to failed dependency should be pruned already
+                assert node.allDependenciesSuccessful();
 
                 foundReadyNode = true;
 
@@ -875,23 +872,21 @@ public class DefaultExecutionPlan implements ExecutionPlan {
 
     @Override
     public void finishedExecuting(Node node) {
+        if (!node.isExecuting()) {
+            throw new IllegalStateException(String.format("Cannot finish executing %s as it is in an unexpected state.", node));
+        }
         try {
             if (maybeNodesReady) {
                 maybeNodesSelectable = true;
             }
-            if (node.isExecuting()) {
-                enforceFinalizers(node);
-                if (node.isFailed()) {
-                    LOGGER.debug("Node {} failed", node);
-                    handleFailure(node);
-                } else {
-                    LOGGER.debug("Node {} finished executing", node);
-                }
-
-                runningNodes.remove(node);
-                node.finishExecution(this::recordNodeCompleted);
+            enforceFinalizers(node);
+            runningNodes.remove(node);
+            node.finishExecution(this::recordNodeCompleted);
+            if (node.isFailed()) {
+                LOGGER.debug("Node {} failed", node);
+                handleFailure(node);
             } else {
-                throw new IllegalStateException(String.format("Cannot finish executing %s as it is in an unexpected state.", node));
+                LOGGER.debug("Node {} finished executing", node);
             }
         } finally {
             unlockProjectFor(node);
@@ -1005,24 +1000,31 @@ public class DefaultExecutionPlan implements ExecutionPlan {
     }
 
     @Override
-    public boolean allNodesComplete() {
+    public boolean allExecutionComplete() {
         for (Node node : nodeMapping) {
             if (!node.isComplete()) {
                 return false;
             }
         }
-        // TODO:lptr why don't we check runningNodes here like we do in hasNodesRemaining()?
         return true;
     }
 
     @Override
-    public boolean hasNodesRemaining() {
-        for (Node node : executionQueue) {
+    public boolean hasNodesYetToStart() {
+        Iterator<Node> iterator = executionQueue.iterator();
+        while (iterator.hasNext()) {
+            Node node = iterator.next();
+            if (node.isReady() && node.allDependenciesComplete() && !node.allDependenciesSuccessful()) {
+                // Cannot run due to failed dependency - prune this
+                node.skipExecution(this::recordNodeCompleted);
+                iterator.remove();
+                continue;
+            }
             if (!node.isComplete()) {
                 return true;
             }
         }
-        return !runningNodes.isEmpty();
+        return false;
     }
 
     @Override
