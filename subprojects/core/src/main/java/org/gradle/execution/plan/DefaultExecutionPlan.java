@@ -192,8 +192,8 @@ public class DefaultExecutionPlan implements ExecutionPlan {
 
         while (!queue.isEmpty()) {
             Node node = queue.getFirst();
-            if (node.getDependenciesProcessed()) {
-                // Have already visited this node - skip it
+            if (node.getDependenciesProcessed() || node.isAlreadyExecuted()) {
+                // Have already visited this node or have already executed it - skip it
                 queue.removeFirst();
                 continue;
             }
@@ -392,7 +392,8 @@ public class DefaultExecutionPlan implements ExecutionPlan {
     @Override
     public void close() {
         lockCoordinator.removeLockReleaseListener(resourceUnlockListener);
-        completionHandler = localTaskNode -> {};
+        completionHandler = localTaskNode -> {
+        };
         entryNodes.clear();
         nodeMapping.clear();
         executionQueue.clear();
@@ -646,6 +647,12 @@ public class DefaultExecutionPlan implements ExecutionPlan {
         while (iterator.hasNext()) {
             Node node = iterator.next();
             if (node.isReady() && node.allDependenciesComplete()) {
+                if (!node.allDependenciesSuccessful()) {
+                    // Cannot execute this node - skip it
+                    node.skipExecution(this::recordNodeCompleted);
+                    continue;
+                }
+
                 foundReadyNode = true;
 
                 if (!tryAcquireLocksForNode(node, resources)) {
@@ -660,14 +667,9 @@ public class DefaultExecutionPlan implements ExecutionPlan {
                     continue;
                 }
 
-                if (node.allDependenciesSuccessful()) {
-                    node.startExecution(this::recordNodeExecutionStarted);
-                    if (mutations.hasValidationProblem) {
-                        invalidNodeRunning = true;
-                    }
-                } else {
-                    releaseLocks(resources);
-                    node.skipExecution(this::recordNodeCompleted);
+                node.startExecution(this::recordNodeExecutionStarted);
+                if (mutations.hasValidationProblem) {
+                    invalidNodeRunning = true;
                 }
                 iterator.remove();
                 return node;
@@ -877,7 +879,7 @@ public class DefaultExecutionPlan implements ExecutionPlan {
             if (maybeNodesReady) {
                 maybeNodesSelectable = true;
             }
-            if (!node.isComplete()) {
+            if (node.isExecuting()) {
                 enforceFinalizers(node);
                 if (node.isFailed()) {
                     LOGGER.debug("Node {} failed", node);
@@ -889,7 +891,7 @@ public class DefaultExecutionPlan implements ExecutionPlan {
                 runningNodes.remove(node);
                 node.finishExecution(this::recordNodeCompleted);
             } else {
-                LOGGER.debug("Already completed node {} reported as finished executing", node);
+                throw new IllegalStateException(String.format("Cannot finish executing %s as it is in an unexpected state.", node));
             }
         } finally {
             unlockProjectFor(node);

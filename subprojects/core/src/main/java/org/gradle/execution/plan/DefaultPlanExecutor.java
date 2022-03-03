@@ -224,12 +224,10 @@ public class DefaultPlanExecutor implements PlanExecutor {
 
         private void execute(final Node selected, Action<Node> nodeExecutor) {
             try {
-                if (!selected.isComplete()) {
-                    try {
-                        nodeExecutor.execute(selected);
-                    } catch (Throwable e) {
-                        selected.setExecutionFailure(e);
-                    }
+                try {
+                    nodeExecutor.execute(selected);
+                } catch (Throwable e) {
+                    selected.setExecutionFailure(e);
                 }
             } finally {
                 coordinationService.withStateLock(state -> {

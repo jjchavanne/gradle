@@ -21,7 +21,6 @@ import org.gradle.api.Task
 import org.gradle.api.file.FileCollection
 import org.gradle.api.internal.DocumentationRegistry
 import org.gradle.api.internal.TaskInternal
-import org.gradle.api.internal.tasks.TaskStateInternal
 import org.gradle.api.tasks.Destroys
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
@@ -868,49 +867,6 @@ class DefaultExecutionPlanParallelTest extends AbstractExecutionPlanSpec {
         def invalidTask = selectNextTask()
         then:
         invalidTask == second
-    }
-
-    def "a skipped invalid task does not hold up rest of build"() {
-        given:
-        executionPlan.continueOnFailure = true
-        def failure = new RuntimeException("BOOM!")
-        def brokenState = Stub(TaskStateInternal) {
-            getFailure() >> failure
-            rethrowFailure() >> { throw failure }
-        }
-        def broken = task("broken", type: Async)
-        def invalid = task("invalid", type: Async, dependsOn: [broken])
-        def regular = task("task", type: Async)
-
-        when:
-        addToGraphAndPopulate(broken, invalid, regular)
-        def firstTaskNode = selectNextTaskNode()
-
-        then:
-        firstTaskNode.state == Node.ExecutionState.EXECUTING
-        firstTaskNode.task == broken
-        1 * nodeValidator.hasValidationProblems({ LocalTaskNode node -> node.task == broken }) >> false
-        0 * nodeValidator.hasValidationProblems(_ as Node)
-
-        when:
-        executionPlan.finishedExecuting(firstTaskNode)
-        def secondTaskNode = selectNextTaskNode()
-
-        then:
-        secondTaskNode.state == Node.ExecutionState.SKIPPED
-        secondTaskNode.task == invalid
-        _ * broken.state >> brokenState
-        1 * nodeValidator.hasValidationProblems({ LocalTaskNode node -> node.task == invalid }) >> true
-        0 * nodeValidator.hasValidationProblems(_ as Node)
-
-        when:
-        def thirdTaskNode = selectNextTaskNode()
-
-        then:
-        thirdTaskNode.state == Node.ExecutionState.EXECUTING
-        thirdTaskNode.task == regular
-        1 * nodeValidator.hasValidationProblems({ LocalTaskNode node -> node.task == regular }) >> false
-        0 * nodeValidator.hasValidationProblems(_ as Node)
     }
 
     private void tasksAreNotExecutedInParallel(Task first, Task second) {

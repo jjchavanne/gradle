@@ -150,7 +150,7 @@ public interface ExecutionPlan extends Describable, Closeable {
     void setContinueOnFailure(boolean continueOnFailure);
 
     /**
-     * Selects a work item to run, returns null if there is no work remaining _or_ if no queued work is ready to run.
+     * Selects node to execute, returns {@code null} if there is no work remaining _or_ if no queued work is ready to run.
      */
     @Nullable
     Node selectNext();
